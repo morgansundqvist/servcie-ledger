@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model FiscalYear {
+  id                    String                 @id @default(uuid())
+  fromDate              DateTime               @db.Date
+  toDate                DateTime               @db.Date
+  fiscalYearAccounts    FiscalYearAccount[]
+  verificationInstances VerificationInstance[]
+}
+
+model FiscalYearAccount {
+  id                 String              @id @default(uuid())
+  fiscalYearId       String
+  fiscalYear         FiscalYear          @relation(fields: [fiscalYearId], references: [id])
+  accountCode        String
+  accountName        String
+  startingBalance    Decimal
+  ledgerTransactions LedgerTransaction[]
+  ledgerJournalLine  LedgerJournalLine[]
+}
+
+model LedgerTransaction {
+  id                     String                @id @default(uuid())
+  accountId              String
+  fiscalYearAccount      FiscalYearAccount     @relation(fields: [accountId], references: [id])
+  createdDateTime        DateTime              @default(now()) @db.Timestamptz()
+  transactionDate        DateTime              @db.Date
+  verificationInstanceId String?
+  verificationInstance   VerificationInstance? @relation(fields: [verificationInstanceId], references: [id])
+
+  amount Decimal
+}
+
+model Verification {
+  id                    String                 @id @default(uuid())
+  name                  String
+  prefix                String
+  suffix                String
+  isDefault             Boolean                @default(false)
+  verificationInstances VerificationInstance[]
+}
+
+model VerificationInstance {
+  id                 String              @id @default(uuid())
+  verificationId     String
+  verification       Verification        @relation(fields: [verificationId], references: [id])
+  fiscalYearId       String
+  fiscalYear         FiscalYear          @relation(fields: [fiscalYearId], references: [id])
+  createdDateTime    DateTime            @default(now()) @db.Timestamptz()
+  lockedNumber       Int                 @default(autoincrement())
+  bookingDescription String?
+  ledgerTransactions LedgerTransaction[]
+}
+
+model LedgerJournal {
+  id           String              @id @default(uuid())
+  name         String
+  isPosted     Boolean             @default(false)
+  bookingDate  DateTime?           @db.Date()
+  journalLines LedgerJournalLine[]
+}
+
+model LedgerJournalLine {
+  id                String            @id @default(uuid())
+  journalId         String
+  journal           LedgerJournal     @relation(fields: [journalId], references: [id])
+  accountId         String
+  fiscalYearAccount FiscalYearAccount @relation(fields: [accountId], references: [id])
+  createdDateTime   DateTime          @default(now()) @db.Timestamptz()
+  transactionDate   DateTime          @db.Date
+  isPosted          Boolean           @default(false)
+  amount            Decimal
+}
